@@ -9,7 +9,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [24, 25, 34, 35, 36])
 class ExampleRobolectricTest {
 
   @Test
