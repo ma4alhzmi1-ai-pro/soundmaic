@@ -1,79 +1,135 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data.RecordingEntity
 import com.example.viewmodel.VoiceStudioViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TtsScreen(viewModel: VoiceStudioViewModel) {
+    val context = LocalContext.current
     val ttsText by viewModel.ttsText.collectAsState()
     val isArabic by viewModel.isArabicTts.collectAsState()
-    val pitch by viewModel.pitch.collectAsState()
-    val speed by viewModel.speed.collectAsState()
+    val recordings by viewModel.recordings.collectAsState()
+    val ttsRecordings = recordings.filter { it.presetName == "TTS" }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(
-            text = "تحويل النص المكتوب إلى صوت ذكي",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "اكتب أي نص لتحويله بصوت فتاة، امرأة، شاب أو طفل بدون إنترنت",
+        Text("تحويل النص المكتوب إلى صوت ذكي", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(4.dp))
+        Text("اكتب النص، وسيظهر الصوت الناتج أسفل الشاشة تلقائيًا.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Language selector
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilterChip(
-                selected = isArabic,
-                onClick = { viewModel.setArabicTts(true) },
-                label = { Text("اللغة العربية") }
-            )
-            FilterChip(
-                selected = !isArabic,
-                onClick = { viewModel.setArabicTts(false) },
-                label = { Text("English") }
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            FilterChip(isArabic, { viewModel.setArabicTts(true) }, label = { Text("العربية") })
+            FilterChip(!isArabic, { viewModel.setArabicTts(false) }, label = { Text("English") })
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+        Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = ttsText,
-            onValueChange = { viewModel.updateTtsText(it) },
+            onValueChange = viewModel::updateTtsText,
             label = { Text("اكتب النص هنا...") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp),
+            modifier = Modifier.fillMaxWidth().height(120.dp),
             maxLines = 5
         )
+        Spacer(Modifier.height(10.dp))
+        Button(onClick = viewModel::speakTts, modifier = Modifier.fillMaxWidth()) {
+            Text("توليد ونطق النص صوتيًا")
+        }
+        Spacer(Modifier.height(12.dp))
+        Text("الأصوات المحولة (${ttsRecordings.size})", style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+        if (ttsRecordings.isEmpty()) {
+            Text("ستظهر الأصوات المحولة هنا بعد اكتمال التوليد.",
+                color = MaterialTheme.colorScheme.outline)
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(ttsRecordings, key = { it.id }) { recording ->
+                    TtsRecordingCard(recording, viewModel, context)
+                }
+            }
+        }
+    }
+}
 
-        Button(
-            onClick = { viewModel.speakTts() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "توليد ونطق النص صوتياً")
+@Composable
+private fun TtsRecordingCard(
+    recording: RecordingEntity,
+    viewModel: VoiceStudioViewModel,
+    context: android.content.Context
+) {
+    val date = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
+        .format(Date(recording.timestamp))
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp)) {
+        Column(Modifier.padding(10.dp)) {
+            Text(recording.title, fontWeight = FontWeight.Bold)
+            Text(date, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { viewModel.playRecordingItem(recording) }) {
+                    Icon(Icons.Default.PlayArrow, "إعادة التشغيل")
+                }
+                IconButton(onClick = viewModel::stopTts) {
+                    Icon(Icons.Default.Stop, "إيقاف التشغيل")
+                }
+                IconButton(onClick = { viewModel.saveRecordingToDevice(context, recording) }) {
+                    Icon(Icons.Default.Download, "حفظ الصوت")
+                }
+                IconButton(onClick = { viewModel.shareRecording(context, recording) }) {
+                    Icon(Icons.Default.Share, "مشاركة الصوت")
+                }
+                IconButton(onClick = { viewModel.deleteRecording(recording) }) {
+                    Icon(Icons.Default.Delete, "حذف الصوت", tint = MaterialTheme.colorScheme.error)
+                }
+            }
         }
     }
 }

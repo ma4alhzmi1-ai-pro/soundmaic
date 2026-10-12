@@ -77,9 +77,11 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     val isArabicTts: StateFlow<Boolean> = _isArabicTts.asStateFlow()
 
     init {
-        ttsManager = TtsManager(application) { success ->
-            // initialized
-        }
+        ttsManager = TtsManager(
+            context = application,
+            onInitialized = { },
+            onAudioGenerated = { reference, title -> saveGeneratedTts(reference, title) }
+        )
 
         viewModelScope.launch {
             recordingDao.getAllRecordings().collectLatest { list ->
@@ -186,7 +188,39 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     fun deleteRecording(recording: RecordingEntity) {
         viewModelScope.launch {
             recordingDao.deleteRecording(recording)
+            if (recording.filePath.startsWith("content://")) {
+                runCatching {
+                    getApplication<Application>().contentResolver.delete(Uri.parse(recording.filePath), null, null)
+                }
+            } else {
+                File(recording.filePath).delete()
+            }
         }
+    }
+
+    private fun saveGeneratedTts(reference: String, title: String) {
+        viewModelScope.launch {
+            recordingDao.insertRecording(RecordingEntity(
+                title = title,
+                filePath = reference,
+                timestamp = System.currentTimeMillis(),
+                durationMs = 0L,
+                presetName = "TTS",
+                pitch = _pitch.value,
+                speed = _speed.value,
+                isDenoised = false,
+                backgroundSound = "none"
+            ))
+        }
+    }
+
+    fun saveRecordingToDevice(context: Context, recording: RecordingEntity) {
+        if (recording.filePath.startsWith("content://")) {
+            Toast.makeText(context, "الصوت محفوظ بالفعل داخل Music/REMOVOICE", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val saved = audioStorage.saveFile(File(recording.filePath), recording.title)
+        Toast.makeText(context, if (saved != null) "تم حفظ الصوت داخل Music/REMOVOICE" else "تعذر حفظ الصوت", Toast.LENGTH_SHORT).show()
     }
 
     fun updateTtsText(text: String) {
@@ -213,6 +247,10 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
                 profileId = _selectedPresetId.value
             )
         }
+    }
+
+    fun stopTts() {
+        ttsManager.stop()
     }
 
     fun shareRecording(context: Context, recording: RecordingEntity) {

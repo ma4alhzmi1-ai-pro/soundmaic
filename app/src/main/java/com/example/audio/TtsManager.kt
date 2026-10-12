@@ -22,7 +22,8 @@ import java.util.concurrent.TimeUnit
  */
 class TtsManager(
     private val context: Context,
-    private val onInitialized: (Boolean) -> Unit
+    private val onInitialized: (Boolean) -> Unit,
+    private val onAudioGenerated: (String, String) -> Unit = { _, _ -> }
 ) : TextToSpeech.OnInitListener {
     private var fallbackTts: TextToSpeech? = TextToSpeech(context, this)
     private var fallbackInitialized = false
@@ -69,10 +70,13 @@ class TtsManager(
                     val body = response.body ?: throw IllegalStateException("Voice API returned no audio")
                     val output = File(context.cacheDir, "cloud_tts_${System.currentTimeMillis()}.mp3")
                     body.byteStream().use { input -> output.outputStream().use { input.copyTo(it) } }
-                    audioStorage.saveFile(
-                        output,
+                    val title =
                         "REMOVOICE_TTS_${System.currentTimeMillis().toString().takeLast(6)}"
-                    )
+                    val storedReference = audioStorage.saveFile(
+                        output,
+                        title
+                    ) ?: output.absolutePath
+                    onAudioGenerated(storedReference, title)
                     playGeneratedAudio(output)
                 }
             } catch (error: Throwable) {
