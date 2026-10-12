@@ -20,11 +20,14 @@ class VoicePlayerManager(private val context: Context) {
     ) {
         stop()
         try {
-            val file = File(filePath)
-            if (!file.exists()) return
-
             mediaPlayer = MediaPlayer().apply {
-                setDataSource(context, Uri.fromFile(file))
+                if (filePath.startsWith("content://")) {
+                    setDataSource(context, Uri.parse(filePath))
+                } else {
+                    val file = File(filePath)
+                    if (!file.exists()) return
+                    setDataSource(context, Uri.fromFile(file))
+                }
                 setOnPreparedListener { mp ->
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                         try {

@@ -102,7 +102,7 @@ fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
             ModalDrawerSheet {
                 Column(modifier = Modifier.padding(vertical = 20.dp)) {
                     Text(
-                        text = "Soundmaic",
+                        text = "REMOVOICE",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -150,7 +150,7 @@ fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Soundmaic | ${selectedScreen.titleAr}") },
+                    title = { Text("REMOVOICE | ${selectedScreen.titleAr}") },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "فتح الإعدادات الجانبية")
@@ -210,7 +210,7 @@ fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
                             Screen.Studio -> EffectsStudioScreen(viewModel)
                             Screen.Tts -> TtsScreen(viewModel)
                             Screen.Saved -> RecordingsListScreen(viewModel)
-                            Screen.Settings -> SettingsScreen()
+                            Screen.Settings -> SettingsScreen(viewModel)
                         }
                     }
                 }

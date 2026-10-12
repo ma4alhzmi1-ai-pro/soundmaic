@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">VoiceCraft Pro</string>
+    <string name="app_name">REMOVOICE</string>
     <string name="nav_recorder">المسجل والمغير</string>
     <string name="nav_studio">استوديو التأثيرات</string>
     <string name="nav_tts">النص إلى صوت</string>

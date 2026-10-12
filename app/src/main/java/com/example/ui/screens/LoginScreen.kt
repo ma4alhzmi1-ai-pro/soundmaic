@@ -55,7 +55,7 @@ fun LoginScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
             painter = painterResource(R.drawable.login_background),
-            contentDescription = "شاشة دخول Soundmaic",
+            contentDescription = "شاشة دخول REMOVOICE",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
@@ -73,7 +73,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Bottom
         ) {
             Text(
-                text = "Soundmaic",
+                text = "REMOVOICE",
                 color = Color(0xFFFFD76A),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold

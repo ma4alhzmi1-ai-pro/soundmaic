@@ -13,14 +13,20 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.viewmodel.VoiceStudioViewModel
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(viewModel: VoiceStudioViewModel) {
+    val showAudioInPlayers by viewModel.showAudioInPlayers.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,9 +51,31 @@ fun SettingsScreen() {
 
         Card(modifier = Modifier.fillMaxWidth()) {
             ListItem(
+                headlineContent = { Text("إظهار الأصوات في مشغلات الهاتف") },
+                supportingContent = {
+                    Text(
+                        if (showAudioInPlayers) {
+                            "مفعّل — ستظهر الملفات في تطبيقات الموسيقى والملفات"
+                        } else {
+                            "مخفي — تبقى الملفات محفوظة داخل Music/REMOVOICE دون ظهورها في المشغلات"
+                        }
+                    )
+                },
+                trailingContent = {
+                    Switch(
+                        checked = showAudioInPlayers,
+                        onCheckedChange = viewModel::setShowAudioInPlayers
+                    )
+                }
+            )
+        }
+        Spacer(modifier = Modifier.padding(6.dp))
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            ListItem(
                 leadingContent = { Icon(Icons.Default.Security, contentDescription = null) },
                 headlineContent = { Text("الخصوصية والحماية") },
-                supportingContent = { Text("لا يتم حفظ النصوص أو التسجيلات أو الملفات الصوتية الناتجة بعد اكتمال المعالجة") }
+                supportingContent = { Text("يتم حفظ الأصوات محليًا داخل مجلد Music/REMOVOICE، ويمكن إخفاؤها عن المشغلات من المفتاح أعلاه") }
             )
         }
         Spacer(modifier = Modifier.padding(6.dp))
@@ -68,7 +96,7 @@ fun SettingsScreen() {
         )
         Spacer(modifier = Modifier.padding(4.dp))
         Text(
-            text = "Soundmaic 1.0.0\nاستوديو صوت احترافي للتسجيل، المؤثرات، تحويل النص إلى صوت، وحفظ الأعمال.",
+            text = "REMOVOICE 1.0.0\nاستوديو صوت احترافي للتسجيل، المؤثرات، تحويل النص إلى صوت، وحفظ الأعمال.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

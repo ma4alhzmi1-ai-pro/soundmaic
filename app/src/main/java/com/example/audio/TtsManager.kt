@@ -17,7 +17,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * Cloud TTS client for Soundmaic Voice API.
+ * Cloud TTS client for REMOVOICE Voice API.
  * The ElevenLabs key never enters this app; the API key is held by the backend.
  */
 class TtsManager(
@@ -27,6 +27,7 @@ class TtsManager(
     private var fallbackTts: TextToSpeech? = TextToSpeech(context, this)
     private var fallbackInitialized = false
     private var player: MediaPlayer? = null
+    private val audioStorage = AudioStorageManager(context)
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -68,6 +69,10 @@ class TtsManager(
                     val body = response.body ?: throw IllegalStateException("Voice API returned no audio")
                     val output = File(context.cacheDir, "cloud_tts_${System.currentTimeMillis()}.mp3")
                     body.byteStream().use { input -> output.outputStream().use { input.copyTo(it) } }
+                    audioStorage.saveFile(
+                        output,
+                        "REMOVOICE_TTS_${System.currentTimeMillis().toString().takeLast(6)}"
+                    )
                     playGeneratedAudio(output)
                 }
             } catch (error: Throwable) {

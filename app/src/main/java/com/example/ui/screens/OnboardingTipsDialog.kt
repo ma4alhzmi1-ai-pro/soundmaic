@@ -26,7 +26,7 @@ fun OnboardingTipsDialog(onHide: () -> Unit) {
         icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
         title = {
             Text(
-                text = "مرحبًا بك في Soundmaic",
+                text = "مرحبًا بك في REMOVOICE",
                 fontWeight = FontWeight.Bold
             )
         },
@@ -53,7 +53,7 @@ fun OnboardingTipsDialog(onHide: () -> Unit) {
                     supportingContent = { Text("اضبط السرعة والنبرة والمؤثرات بدون مبالغة") }
                 )
                 Text(
-                    text = "يمكنك فتح القائمة الجانبية من زر ☰ للوصول إلى الإعدادات والمحفوظات والنصائح.",
+                    text = "يمكنك فتح القائمة الجانبية من زر ☰ للوصول إلى الإعدادات والمحفوظات والنصائح في REMOVOICE.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 10.dp)

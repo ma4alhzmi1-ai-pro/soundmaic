@@ -16,6 +16,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audio.AudioRecorderManager
+import com.example.audio.AudioStorageManager
 import com.example.audio.TtsManager
 import com.example.audio.VoicePlayerManager
 import com.example.audio.VoicePresets
@@ -32,6 +33,7 @@ import java.io.File
 class VoiceStudioViewModel(application: Application) : AndroidViewModel(application) {
     private val recordingDao: RecordingDao = VoiceDatabase.getDatabase(application).recordingDao()
     private val recorderManager = AudioRecorderManager(application)
+    private val audioStorage = AudioStorageManager(application)
     private val playerManager = VoicePlayerManager(application)
     private val ttsManager: TtsManager
 
@@ -64,6 +66,9 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _recordings = MutableStateFlow<List<RecordingEntity>>(emptyList())
     val recordings: StateFlow<List<RecordingEntity>> = _recordings.asStateFlow()
+
+    private val _showAudioInPlayers = MutableStateFlow(audioStorage.isVisibleInPlayers())
+    val showAudioInPlayers: StateFlow<Boolean> = _showAudioInPlayers.asStateFlow()
 
     private val _ttsText = MutableStateFlow("")
     val ttsText: StateFlow<String> = _ttsText.asStateFlow()
@@ -123,8 +128,11 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
         val path = recorderManager.stopRecording()
         _isRecording.value = false
         if (path != null) {
-            _currentFilePath.value = path
-            saveCurrentRecording("صوت معدل ${System.currentTimeMillis().toString().takeLast(4)}")
+            val title = "REMOVOICE_${System.currentTimeMillis().toString().takeLast(6)}"
+            val storedPath = audioStorage.saveFile(File(path), title) ?: path
+            _currentFilePath.value = storedPath
+            if (storedPath != path) File(path).delete()
+            saveCurrentRecording(title)
         }
     }
 
@@ -189,6 +197,11 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
         _isArabicTts.value = arabic
     }
 
+    fun setShowAudioInPlayers(visible: Boolean) {
+        audioStorage.setVisibleInPlayers(visible)
+        _showAudioInPlayers.value = visible
+    }
+
     fun speakTts() {
         val text = _ttsText.value
         if (text.isNotBlank()) {
@@ -203,24 +216,26 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun shareRecording(context: Context, recording: RecordingEntity) {
-        val file = File(recording.filePath)
-        shareAudioFile(context, file, recording.title)
+        shareAudioReference(context, recording.filePath, recording.title)
     }
 
     fun shareCurrentRecording(context: Context) {
         val path = _currentFilePath.value ?: return
-        shareAudioFile(context, File(path), "تسجيل Soundmaic")
+        shareAudioReference(context, path, "تسجيل REMOVOICE")
     }
 
-    private fun shareAudioFile(context: Context, file: File, title: String) {
-        if (!file.exists()) {
+    private fun shareAudioReference(context: Context, reference: String, title: String) {
+        val file = if (reference.startsWith("content://")) null else File(reference)
+        if (file != null && !file.exists()) {
             Toast.makeText(context, "الملف الصوتي غير موجود", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val uri = if (reference.startsWith("content://")) Uri.parse(reference)
+        else FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file!!)
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = if (file.extension.equals("m4a", ignoreCase = true)) "audio/mp4" else "audio/mpeg"
+            type = if (reference.startsWith("content://")) "audio/*"
+            else if (reference.endsWith(".m4a", ignoreCase = true)) "audio/mp4" else "audio/mpeg"
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TITLE, title)
             clipData = ClipData.newRawUri(title, uri)
@@ -231,6 +246,15 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setAsRingtone(context: Context, recording: RecordingEntity) {
         try {
+            if (recording.filePath.startsWith("content://")) {
+                RingtoneManager.setActualDefaultRingtoneUri(
+                    context,
+                    RingtoneManager.TYPE_RINGTONE,
+                    Uri.parse(recording.filePath)
+                )
+                Toast.makeText(context, "تم تعيين الصوت كنغمة رنين بنجاح!", Toast.LENGTH_LONG).show()
+                return
+            }
             val file = File(recording.filePath)
             if (!file.exists()) {
                 Toast.makeText(context, "الملف غير موجود", Toast.LENGTH_SHORT).show()
