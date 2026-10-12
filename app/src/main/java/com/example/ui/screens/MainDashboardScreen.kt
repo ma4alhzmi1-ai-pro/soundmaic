@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -7,11 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Folder
@@ -42,6 +42,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,9 +68,26 @@ sealed class Screen(val route: String, val titleAr: String, val icon: androidx.c
 fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
     val items = listOf(Screen.Recorder, Screen.Studio, Screen.Tts, Screen.Saved, Screen.Settings)
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Recorder) }
+    val navigationHistory = remember { mutableStateListOf<Screen>(Screen.Recorder) }
     var copyrightVisible by remember { mutableStateOf(true) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    fun navigateTo(screen: Screen) {
+        if (selectedScreen != screen) {
+            selectedScreen = screen
+            navigationHistory.add(screen)
+        }
+    }
+
+    BackHandler(enabled = drawerState.isOpen || navigationHistory.size > 1) {
+        if (drawerState.isOpen) {
+            scope.launch { drawerState.close() }
+        } else if (navigationHistory.size > 1) {
+            navigationHistory.removeAt(navigationHistory.lastIndex)
+            selectedScreen = navigationHistory.last()
+        }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -103,7 +121,7 @@ fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
                             label = { Text(screen.titleAr) },
                             selected = selectedScreen == screen,
                             onClick = {
-                                selectedScreen = screen
+                                navigateTo(screen)
                                 scope.launch { drawerState.close() }
                             },
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
@@ -139,7 +157,7 @@ fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
                         }
                     },
                     actions = {
-                        IconButton(onClick = { selectedScreen = Screen.Settings }) {
+                        IconButton(onClick = { navigateTo(Screen.Settings) }) {
                             Icon(Icons.Default.Settings, contentDescription = "الإعدادات")
                         }
                     }
@@ -152,7 +170,7 @@ fun MainDashboardScreen(viewModel: VoiceStudioViewModel) {
                             icon = { Icon(screen.icon, contentDescription = screen.titleAr) },
                             label = { Text(screen.titleAr) },
                             selected = selectedScreen == screen,
-                            onClick = { selectedScreen = screen }
+                            onClick = { navigateTo(screen) }
                         )
                     }
                 }
