@@ -2,6 +2,7 @@ package com.example.viewmodel
 
 import android.app.Application
 import android.content.ContentValues
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.media.MediaRecorder
@@ -203,12 +204,26 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
     fun shareRecording(context: Context, recording: RecordingEntity) {
         val file = File(recording.filePath)
-        if (!file.exists()) return
+        shareAudioFile(context, file, recording.title)
+    }
+
+    fun shareCurrentRecording(context: Context) {
+        val path = _currentFilePath.value ?: return
+        shareAudioFile(context, File(path), "تسجيل Soundmaic")
+    }
+
+    private fun shareAudioFile(context: Context, file: File, title: String) {
+        if (!file.exists()) {
+            Toast.makeText(context, "الملف الصوتي غير موجود", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "audio/*"
+            type = if (file.extension.equals("m4a", ignoreCase = true)) "audio/mp4" else "audio/mpeg"
             putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TITLE, title)
+            clipData = ClipData.newRawUri(title, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "مشاركة الصوت عبر"))

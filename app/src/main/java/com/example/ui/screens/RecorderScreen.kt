@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -194,6 +195,13 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = if (isPlaying) "إيقاف الاستماع" else "استماع للتسجيل المعدّل")
+                }
+                IconButton(onClick = { viewModel.shareCurrentRecording(context) }) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "مشاركة الصوت عبر Bluetooth ووسائل التواصل",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
                 }
             }
         }
