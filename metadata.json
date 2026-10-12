@@ -1,0 +1,7 @@
+{
+  "name": "VoiceCraft Pro",
+  "description": "Professional offline voice changer, recorder, TTS and audio studio with advanced pitch control and noise cancellation",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
