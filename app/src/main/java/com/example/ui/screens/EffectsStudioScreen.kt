@@ -49,8 +49,8 @@ fun EffectsStudioScreen(viewModel: VoiceStudioViewModel) {
         Slider(
             value = pitch,
             onValueChange = { viewModel.setPitch(it) },
-            valueRange = 0.3f..2.5f,
-            steps = 22
+            valueRange = 0.85f..1.15f,
+            steps = 5
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -60,8 +60,8 @@ fun EffectsStudioScreen(viewModel: VoiceStudioViewModel) {
         Slider(
             value = speed,
             onValueChange = { viewModel.setSpeed(it) },
-            valueRange = 0.5f..2.0f,
-            steps = 15
+            valueRange = 0.9f..1.1f,
+            steps = 9
         )
 
         Spacer(modifier = Modifier.height(20.dp))

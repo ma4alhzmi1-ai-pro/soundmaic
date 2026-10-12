@@ -28,7 +28,14 @@ class VoicePlayerManager(private val context: Context) {
                 setOnPreparedListener { mp ->
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                         try {
-                            mp.playbackParams = mp.playbackParams.setSpeed(speed).setPitch(pitch)
+                            // Large pitch changes are the main source of the robotic
+                            // artefact. Keep human voices in a conservative range
+                            // and avoid changing the duration aggressively.
+                            val naturalPitch = pitch.coerceIn(0.85f, 1.15f)
+                            val naturalSpeed = speed.coerceIn(0.92f, 1.08f)
+                            mp.playbackParams = mp.playbackParams
+                                .setSpeed(naturalSpeed)
+                                .setPitch(naturalPitch)
                         } catch (e: Exception) {
                             Log.e("VoicePlayer", "PlaybackParams error", e)
                         }

@@ -16,7 +16,9 @@ class AudioRecorderManager(private val context: Context) {
 
     fun startRecording(): String? {
         val outputDir = context.cacheDir
-        val audioFile = File(outputDir, "voicecraft_${System.currentTimeMillis()}.3gp")
+        // AMR-NB/3GP introduces strong telephone-bandwidth artifacts that become
+        // very noticeable after pitch shifting. Record clean AAC at 44.1 kHz instead.
+        val audioFile = File(outputDir, "voicecraft_${System.currentTimeMillis()}.m4a")
         currentFilePath = audioFile.absolutePath
 
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -26,8 +28,10 @@ class AudioRecorderManager(private val context: Context) {
             MediaRecorder()
         }.apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioSamplingRate(44_100)
+            setAudioEncodingBitRate(128_000)
             setOutputFile(currentFilePath)
             try {
                 prepare()

@@ -46,10 +46,10 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     private val _selectedPresetId = MutableStateFlow("young_woman")
     val selectedPresetId: StateFlow<String> = _selectedPresetId.asStateFlow()
 
-    private val _pitch = MutableStateFlow(1.5f)
+    private val _pitch = MutableStateFlow(1.08f)
     val pitch: StateFlow<Float> = _pitch.asStateFlow()
 
-    private val _speed = MutableStateFlow(1.1f)
+    private val _speed = MutableStateFlow(1.0f)
     val speed: StateFlow<Float> = _speed.asStateFlow()
 
     private val _isDenoised = MutableStateFlow(true)
@@ -191,7 +191,13 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     fun speakTts() {
         val text = _ttsText.value
         if (text.isNotBlank()) {
-            ttsManager.speak(text, _pitch.value, _speed.value, _isArabicTts.value)
+            ttsManager.speak(
+                text = text,
+                pitch = _pitch.value,
+                speed = _speed.value,
+                isArabic = _isArabicTts.value,
+                profileId = _selectedPresetId.value
+            )
         }
     }
 

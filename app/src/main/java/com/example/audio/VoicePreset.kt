@@ -16,8 +16,8 @@ object VoicePresets {
             id = "young_woman",
             nameAr = "فتاة شابة عشرينية",
             nameEn = "Young Woman",
-            defaultPitch = 1.5f,
-            defaultSpeed = 1.1f,
+            defaultPitch = 1.08f,
+            defaultSpeed = 1.0f,
             descriptionAr = "صوت أنثوي ناعم وعالي النبرة",
             iconName = "face_3"
         ),
@@ -25,8 +25,8 @@ object VoicePresets {
             id = "middle_woman",
             nameAr = "امرأة متوسطة العمر",
             nameEn = "Middle-Aged Woman",
-            defaultPitch = 1.2f,
-            defaultSpeed = 1.0f,
+            defaultPitch = 1.04f,
+            defaultSpeed = 0.98f,
             descriptionAr = "صوت دافئ وطبيعي متزن",
             iconName = "face_4"
         ),
@@ -34,8 +34,8 @@ object VoicePresets {
             id = "elderly_man",
             nameAr = "رجل مسن",
             nameEn = "Elderly Man",
-            defaultPitch = 0.6f,
-            defaultSpeed = 0.85f,
+            defaultPitch = 0.9f,
+            defaultSpeed = 0.94f,
             descriptionAr = "صوت خشن وعميق ببطء",
             iconName = "elderly"
         ),
@@ -43,8 +43,8 @@ object VoicePresets {
             id = "child_10",
             nameAr = "طفل بعمر 10 سنوات",
             nameEn = "10-Year-Old Child",
-            defaultPitch = 1.8f,
-            defaultSpeed = 1.2f,
+            defaultPitch = 1.12f,
+            defaultSpeed = 1.04f,
             descriptionAr = "صوت طفولي حماسي وسريع",
             iconName = "child_care"
         ),
@@ -52,7 +52,7 @@ object VoicePresets {
             id = "young_man",
             nameAr = "شاب",
             nameEn = "Young Man",
-            defaultPitch = 0.95f,
+            defaultPitch = 0.96f,
             defaultSpeed = 1.0f,
             descriptionAr = "صوت رجولي طبيعي وواضح",
             iconName = "face"
