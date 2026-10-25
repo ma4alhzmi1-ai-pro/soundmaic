@@ -18,6 +18,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.audio.AudioRecorderManager
 import com.example.audio.AudioStorageManager
 import com.example.audio.TtsManager
+import com.example.audio.VoiceConversionManager
 import com.example.audio.VoicePlayerManager
 import com.example.audio.VoicePresets
 import com.example.data.RecordingDao
@@ -34,6 +35,7 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     private val recordingDao: RecordingDao = VoiceDatabase.getDatabase(application).recordingDao()
     private val recorderManager = AudioRecorderManager(application)
     private val audioStorage = AudioStorageManager(application)
+    private val voiceConversionManager = VoiceConversionManager(application)
     private val playerManager = VoicePlayerManager(application)
     private val ttsManager: TtsManager
 
@@ -45,6 +47,15 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _currentFilePath = MutableStateFlow<String?>(null)
     val currentFilePath: StateFlow<String?> = _currentFilePath.asStateFlow()
+
+    private val _convertedFilePath = MutableStateFlow<String?>(null)
+    val convertedFilePath: StateFlow<String?> = _convertedFilePath.asStateFlow()
+
+    private val _isConvertingVoice = MutableStateFlow(false)
+    val isConvertingVoice: StateFlow<Boolean> = _isConvertingVoice.asStateFlow()
+
+    private val _voiceConversionMessage = MutableStateFlow<String?>(null)
+    val voiceConversionMessage: StateFlow<String?> = _voiceConversionMessage.asStateFlow()
 
     private val _selectedPresetId = MutableStateFlow("young_woman")
     val selectedPresetId: StateFlow<String> = _selectedPresetId.asStateFlow()
@@ -73,14 +84,20 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     private val _ttsText = MutableStateFlow("")
     val ttsText: StateFlow<String> = _ttsText.asStateFlow()
 
+    private val _ttsMessage = MutableStateFlow<String?>(null)
+    val ttsMessage: StateFlow<String?> = _ttsMessage.asStateFlow()
+
     private val _isArabicTts = MutableStateFlow(true)
     val isArabicTts: StateFlow<Boolean> = _isArabicTts.asStateFlow()
 
     init {
         ttsManager = TtsManager(
             context = application,
-            onInitialized = { },
-            onAudioGenerated = { reference, title -> saveGeneratedTts(reference, title) }
+            onAudioGenerated = { reference, title ->
+                _ttsMessage.value = "تم توليد الصوت عبر ElevenLabs بنجاح"
+                saveGeneratedTts(reference, title)
+            },
+            onError = { message -> _ttsMessage.value = message }
         )
 
         viewModelScope.launch {
@@ -92,6 +109,8 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setPreset(presetId: String) {
         _selectedPresetId.value = presetId
+        _convertedFilePath.value = null
+        _voiceConversionMessage.value = null
         val preset = VoicePresets.presets.find { it.id == presetId }
         if (preset != null) {
             _pitch.value = preset.defaultPitch
@@ -130,6 +149,8 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
         val path = recorderManager.stopRecording()
         _isRecording.value = false
         if (path != null) {
+            _convertedFilePath.value = null
+            _voiceConversionMessage.value = null
             val title = "REMOVOICE_${System.currentTimeMillis().toString().takeLast(6)}"
             val storedPath = audioStorage.saveFile(File(path), title) ?: path
             _currentFilePath.value = storedPath
@@ -154,6 +175,8 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun playRecordingItem(recording: RecordingEntity) {
+        _convertedFilePath.value = null
+        _voiceConversionMessage.value = null
         _currentFilePath.value = recording.filePath
         _pitch.value = recording.pitch
         _speed.value = recording.speed
@@ -165,6 +188,66 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     fun stopPlayback() {
         playerManager.stop()
         _isPlaying.value = false
+    }
+
+    fun convertCurrentRecording() {
+        val recordingReference = _currentFilePath.value
+        if (recordingReference.isNullOrBlank()) {
+            _voiceConversionMessage.value = "سجّل صوتًا أو اختر تسجيلًا أولًا"
+            return
+        }
+        if (_isConvertingVoice.value) return
+
+        val targetProfile = _selectedPresetId.value
+        _convertedFilePath.value = null
+        _voiceConversionMessage.value = null
+        _isConvertingVoice.value = true
+        viewModelScope.launch {
+            try {
+                val convertedFile = voiceConversionManager.convertRecording(recordingReference, targetProfile)
+                val title = "REMOVOICE_ELEVENLABS_${System.currentTimeMillis().toString().takeLast(6)}"
+                val savedReference = audioStorage.saveFile(convertedFile, title) ?: convertedFile.absolutePath
+                _convertedFilePath.value = savedReference
+                _voiceConversionMessage.value = "اكتمل التحويل الفعلي عبر ElevenLabs إلى ${VoicePresets.presets.firstOrNull { it.id == targetProfile }?.nameAr ?: targetProfile}"
+                recordingDao.insertRecording(
+                    RecordingEntity(
+                        title = title,
+                        filePath = savedReference,
+                        timestamp = System.currentTimeMillis(),
+                        durationMs = 0L,
+                        presetName = "ElevenLabs:$targetProfile",
+                        pitch = 1.0f,
+                        speed = 1.0f,
+                        isDenoised = false,
+                        backgroundSound = "none"
+                    )
+                )
+                if (savedReference != convertedFile.absolutePath) convertedFile.delete()
+            } catch (error: Exception) {
+                Log.e("VoiceStudioViewModel", "ElevenLabs voice conversion failed", error)
+                _voiceConversionMessage.value = error.message ?: "تعذر تحويل التسجيل حاليًا"
+            } finally {
+                _isConvertingVoice.value = false
+            }
+        }
+    }
+
+    fun playConvertedRecording() {
+        val path = _convertedFilePath.value ?: return
+        _isPlaying.value = true
+        playerManager.playAudio(
+            filePath = path,
+            pitch = 1.0f,
+            speed = 1.0f,
+            isDenoised = false,
+            backgroundSound = "none",
+            onCompletion = { _isPlaying.value = false }
+        )
+    }
+
+    fun shareConvertedRecording(context: Context) {
+        val path = _convertedFilePath.value ?: return
+        shareAudioReference(context, path, "صوت ElevenLabs المحوّل")
     }
 
     fun saveCurrentRecording(title: String) {
@@ -206,8 +289,8 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
                 timestamp = System.currentTimeMillis(),
                 durationMs = 0L,
                 presetName = "TTS",
-                pitch = _pitch.value,
-                speed = _speed.value,
+                pitch = 1.0f,
+                speed = 1.0f,
                 isDenoised = false,
                 backgroundSound = "none"
             ))
@@ -225,6 +308,7 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateTtsText(text: String) {
         _ttsText.value = text
+        _ttsMessage.value = null
     }
 
     fun setArabicTts(arabic: Boolean) {
@@ -239,12 +323,12 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
     fun speakTts() {
         val text = _ttsText.value
         if (text.isNotBlank()) {
+            _ttsMessage.value = null
             ttsManager.speak(
                 text = text,
-                pitch = _pitch.value,
-                speed = _speed.value,
+                speed = 1.0f,
                 isArabic = _isArabicTts.value,
-                profileId = _selectedPresetId.value
+                profileId = "young_woman"
             )
         }
     }
@@ -271,15 +355,29 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
 
         val uri = if (reference.startsWith("content://")) Uri.parse(reference)
         else FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file!!)
+        val mimeType = if (file == null) {
+            context.contentResolver.getType(uri) ?: "audio/*"
+        } else {
+            audioMimeType(file.extension)
+        }
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = if (reference.startsWith("content://")) "audio/*"
-            else if (reference.endsWith(".m4a", ignoreCase = true)) "audio/mp4" else "audio/mpeg"
+            type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             putExtra(Intent.EXTRA_TITLE, title)
             clipData = ClipData.newRawUri(title, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, "مشاركة الصوت عبر"))
+    }
+
+    private fun audioMimeType(extension: String): String = when (extension.lowercase()) {
+        "m4a", "mp4", "aac" -> "audio/mp4"
+        "3gp" -> "audio/3gpp"
+        "ogg", "oga" -> "audio/ogg"
+        "wav" -> "audio/wav"
+        "flac" -> "audio/flac"
+        "webm" -> "audio/webm"
+        else -> "audio/mpeg"
     }
 
     fun setAsRingtone(context: Context, recording: RecordingEntity) {
@@ -302,7 +400,7 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DATA, file.absolutePath)
                 put(MediaStore.MediaColumns.TITLE, recording.title)
-                put(MediaStore.MediaColumns.MIME_TYPE, "audio/3gpp")
+                put(MediaStore.MediaColumns.MIME_TYPE, audioMimeType(file.extension))
                 put(MediaStore.Audio.Media.IS_RINGTONE, true)
                 put(MediaStore.Audio.Media.IS_NOTIFICATION, false)
                 put(MediaStore.Audio.Media.IS_ALARM, false)
@@ -322,7 +420,7 @@ class VoiceStudioViewModel(application: Application) : AndroidViewModel(applicat
             }
         } catch (e: Exception) {
             Log.e("VoiceStudioViewModel", "Ringtone error", e)
-            Toast.makeText(context, "تم تعيين النغمة (وضع محلي)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "تعذر تعيين النغمة", Toast.LENGTH_SHORT).show()
         }
     }
 

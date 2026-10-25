@@ -37,7 +37,7 @@ fun EffectsStudioScreen(viewModel: VoiceStudioViewModel) {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "تحكم في صدى الصوت، القاعات، الحدة، والسرعة",
+            text = "تأثيرات التشغيل المحلي؛ استخدم شاشة التسجيل للتحويل الحقيقي إلى شخصية ElevenLabs",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -45,7 +45,7 @@ fun EffectsStudioScreen(viewModel: VoiceStudioViewModel) {
         Spacer(modifier = Modifier.height(20.dp))
 
         // Pitch Slider
-        Text(text = "حدة الصوت (Pitch): ${String.format("%.2f", pitch)}x", fontWeight = FontWeight.Bold)
+        Text(text = "حدة التشغيل المحلي (Pitch): ${String.format("%.2f", pitch)}x", fontWeight = FontWeight.Bold)
         Slider(
             value = pitch,
             onValueChange = { viewModel.setPitch(it) },

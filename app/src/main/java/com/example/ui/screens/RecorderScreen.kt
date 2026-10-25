@@ -11,9 +11,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,7 +43,11 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
     val isRecording by viewModel.isRecording.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentFilePath by viewModel.currentFilePath.collectAsState()
+    val convertedFilePath by viewModel.convertedFilePath.collectAsState()
+    val isConvertingVoice by viewModel.isConvertingVoice.collectAsState()
+    val voiceConversionMessage by viewModel.voiceConversionMessage.collectAsState()
     val selectedPresetId by viewModel.selectedPresetId.collectAsState()
+    val selectedPresetName = VoicePresets.presets.firstOrNull { it.id == selectedPresetId }?.nameAr ?: selectedPresetId
 
     var hasPermission by remember {
         mutableStateOf(
@@ -72,6 +78,7 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -83,7 +90,7 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "اختر تأثير الصوت ثم ابدأ التسجيل الفوري",
+            text = "اختر شخصية ElevenLabs ثم سجّل صوتك وحوّله فعليًا عبر الإنترنت",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -92,7 +99,7 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
 
         // Presets Grid
         Text(
-            text = "اختر نبرة الصوت:",
+            text = "اختر الشخصية المستهدفة للتحويل:",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.align(Alignment.Start),
             fontWeight = FontWeight.Bold
@@ -194,7 +201,7 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
                         contentDescription = "Play"
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = if (isPlaying) "إيقاف الاستماع" else "استماع للتسجيل المعدّل")
+                    Text(text = if (isPlaying) "إيقاف الاستماع" else "استماع للتسجيل الأصلي")
                 }
                 IconButton(onClick = { viewModel.shareCurrentRecording(context) }) {
                     Icon(
@@ -203,6 +210,68 @@ fun RecorderScreen(viewModel: VoiceStudioViewModel) {
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { viewModel.convertCurrentRecording() },
+                enabled = !isConvertingVoice && !isRecording,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isConvertingVoice) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("جارٍ التحويل عبر ElevenLabs...")
+                } else {
+                    Text("حوّل التسجيل إلى $selectedPresetName عبر ElevenLabs")
+                }
+            }
+            Text(
+                text = "يرسل التسجيل إلى خدمة التحويل السحابية؛ يبقى التسجيل الأصلي محفوظًا.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            if (convertedFilePath != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            if (isPlaying) viewModel.stopPlayback() else viewModel.playConvertedRecording()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                            contentDescription = "تشغيل نتيجة ElevenLabs"
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (isPlaying) "إيقاف" else "استماع للناتج المحوّل")
+                    }
+                    IconButton(onClick = { viewModel.shareConvertedRecording(context) }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "مشاركة الصوت المحوّل"
+                        )
+                    }
+                }
+            }
+
+            voiceConversionMessage?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (convertedFilePath != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         }
     }

@@ -43,6 +43,7 @@ import java.util.Locale
 fun TtsScreen(viewModel: VoiceStudioViewModel) {
     val context = LocalContext.current
     val ttsText by viewModel.ttsText.collectAsState()
+    val ttsMessage by viewModel.ttsMessage.collectAsState()
     val isArabic by viewModel.isArabicTts.collectAsState()
     val recordings by viewModel.recordings.collectAsState()
     val ttsRecordings = recordings.filter { it.presetName == "TTS" }
@@ -54,8 +55,11 @@ fun TtsScreen(viewModel: VoiceStudioViewModel) {
         Text("تحويل النص المكتوب إلى صوت ذكي", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(4.dp))
-        Text("اكتب النص، وسيظهر الصوت الناتج أسفل الشاشة تلقائيًا.",
+        Text("يُولّد النص عبر ElevenLabs عند الاتصال بالإنترنت، ثم يُحفظ الناتج أسفل الشاشة.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("يستخدم هذا القسم ملف «فتاة شابة» (young_woman) دائمًا، مستقلًا عن شخصية تحويل التسجيل.",
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(12.dp))
 
@@ -74,6 +78,14 @@ fun TtsScreen(viewModel: VoiceStudioViewModel) {
         Spacer(Modifier.height(10.dp))
         Button(onClick = viewModel::speakTts, modifier = Modifier.fillMaxWidth()) {
             Text("توليد ونطق النص صوتيًا")
+        }
+        ttsMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (message.startsWith("تم توليد")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
         Spacer(Modifier.height(12.dp))
         Text("الأصوات المحولة (${ttsRecordings.size})", style = MaterialTheme.typography.titleMedium,

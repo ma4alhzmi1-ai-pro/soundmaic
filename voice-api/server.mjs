@@ -4,16 +4,19 @@ import crypto from "node:crypto";
 const PORT = Number(process.env.PORT || 3000);
 const MAX_TEXT_BYTES = 20_000;
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
+const MAX_AUDIO_RESPONSE_BYTES = 20 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 45_000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 20;
 const ELEVENLABS_API = "https://api.elevenlabs.io/v1";
 const CLIENT_HEADER = "android";
+const TRUSTED_PROXY_HOPS = Math.min(5, Math.max(0, Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10) || 0));
 
 const voiceProfiles = Object.freeze({
   young_woman: {
     label: "فتاة شابة",
-    voiceId: "EXAVITQu4vr4xnSDxMaL"
+    // Set this only on the backend to use the user's authorized custom clone.
+    voiceId: process.env.ELEVENLABS_YOUNG_WOMAN_VOICE_ID?.trim() || "EXAVItQu4vr4xnSDxMaL"
   },
   middle_woman: {
     label: "امرأة ناضجة",
@@ -60,7 +63,12 @@ function json(res, status, payload) {
 
 function clientAddress(req) {
   const forwarded = req.headers["x-forwarded-for"];
-  return (typeof forwarded === "string" ? forwarded.split(",")[0] : req.socket.remoteAddress) || "unknown";
+  if (TRUSTED_PROXY_HOPS > 0 && typeof forwarded === "string") {
+    const addresses = forwarded.split(",").map((value) => value.trim()).filter(Boolean);
+    const clientIndex = addresses.length - TRUSTED_PROXY_HOPS - 1;
+    if (clientIndex >= 0) return addresses[clientIndex];
+  }
+  return req.socket.remoteAddress || "unknown";
 }
 
 function checkRateLimit(req) {
@@ -77,9 +85,8 @@ function checkRateLimit(req) {
 }
 
 function isAuthorized(req) {
-  // The mobile client identifier is intentionally not treated as a secret.
-  // The ElevenLabs key remains server-only; rate limiting and profile allowlisting
-  // protect the public mobile endpoint from accidental or automated abuse.
+  // This public identifier is not authentication. Production access still needs
+  // a server-verified App Check token or equivalent identity signal.
   return req.headers["x-soundmaic-client"] === CLIENT_HEADER;
 }
 
@@ -123,7 +130,24 @@ async function callElevenLabs(path, options) {
         statusCode: providerStatus === 429 ? 429 : 502
       });
     }
-    return Buffer.from(await response.arrayBuffer());
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_AUDIO_RESPONSE_BYTES) {
+      await response.body?.cancel();
+      throw Object.assign(new Error("voice provider response too large"), { statusCode: 502 });
+    }
+    if (!response.body) throw Object.assign(new Error("voice provider returned no audio"), { statusCode: 502 });
+    const chunks = [];
+    let totalBytes = 0;
+    for await (const chunk of response.body) {
+      const buffer = Buffer.from(chunk);
+      totalBytes += buffer.length;
+      if (totalBytes > MAX_AUDIO_RESPONSE_BYTES) {
+        throw Object.assign(new Error("voice provider response too large"), { statusCode: 502 });
+      }
+      chunks.push(buffer);
+    }
+    if (totalBytes === 0) throw Object.assign(new Error("voice provider returned empty audio"), { statusCode: 502 });
+    return Buffer.concat(chunks, totalBytes);
   } finally {
     clearTimeout(timeout);
   }
